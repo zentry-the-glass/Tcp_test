@@ -123,6 +123,14 @@ class Util {
     return hexChars.join();
   }
 
+  static String convertToHexString(List<int> numbers) {
+    StringBuffer buffer = StringBuffer();
+    for (int number in numbers) {
+      buffer.write(number.toRadixString(16).padLeft(2, '0'));
+    }
+    return buffer.toString();
+  }
+
   static void write4BytesToBufferBigEndian(
       List<int> buffer, int offset, int data) {
     buffer[offset + 3] = (data >> 24) & 0xFF;
