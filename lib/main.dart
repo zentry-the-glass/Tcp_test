@@ -67,12 +67,10 @@ class _ChatScreenState extends State<ChatScreen> {
        * **/
       setState(() {
         _isConnected = true;
-        log.e('변경?');
       });
-      log.e(_isConnected);
-      print(_isConnected);
       _socket?.listen(
             (data) {
+          //데이터가 들어올때만 호출 됨
           List<String> hexArray = [];
           for (var i = 0; i < data.length; i++) {
             hexArray.add(data[i].toRadixString(16).padLeft(2, '0'));
@@ -258,8 +256,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _send(String message) {
-    log.e(_isConnected);
-    log.e(message);
     if (!_isConnected) {
       return;
     }
@@ -269,6 +265,47 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _controller.clear();
   }
+
+
+  // import 'dart:io';
+  //
+  // void main() async {
+  //   // TCP 서버에 접속
+  //   final socket = await Socket.connect('localhost', 12345);
+  //
+  //   // 전체 데이터 크기
+  //   final totalSize = 110;
+  //
+  //   // 일정 크기의 데이터를 받음
+  //   var buffer = List<int>.filled(40, 0);
+  //   var bytesRead = await socket.read(buffer);
+  //
+  //   // 받은 데이터 출력
+  //   print('Received ${bytesRead} bytes: ${buffer.sublist(0, bytesRead)}');
+  //
+  //   // 누락된 데이터가 있는지 확인
+  //   while (bytesRead < totalSize) {
+  //     // 요청할 데이터의 크기
+  //     var remainingSize = totalSize - bytesRead;
+  //     if (remainingSize > 40) {
+  //       remainingSize = 40;
+  //     }
+  //
+  //     // 누락된 데이터 요청
+  //     var remainingBuffer = List<int>.filled(remainingSize, 0);
+  //     var remainingBytesRead = await socket.read(remainingBuffer);
+  //
+  //     // 받은 데이터 출력
+  //     print('Received ${remainingBytesRead} bytes: ${remainingBuffer.sublist(0, remainingBytesRead)}');
+  //
+  //     // 받은 데이터를 기존 데이터에 추가
+  //     buffer.addAll(remainingBuffer);
+  //     bytesRead += remainingBytesRead;
+  //   }
+  //
+  //   // 접속 종료
+  //   await socket.close();
+  // }
 
   // String bytesToHex(List<int> bytes) {
   //   var hexArray = '0123456789ABCDEF'.split('');
