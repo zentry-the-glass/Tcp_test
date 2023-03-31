@@ -83,6 +83,9 @@ class Input2005 extends TranInput {
 }
 
 class Util {
+
+  static int HeaderSize = 12;
+
   static int unsignedBytesToInt(
       int b0, int b1, int b2, int b3) {
     return (unsignedByteToInt(b0) +
@@ -95,6 +98,11 @@ class Util {
       int b0, int b1, int b2, int b3) {
     return ((unsignedByteToInt(b0) << 24) + (unsignedByteToInt(b1) << 16) +
         (unsignedByteToInt(b2) << 8) + unsignedByteToInt(b3));
+  }
+
+  static int calculateLengthOfNumbers(List<int> numbers) {
+    String numbersString = numbers.join();
+    return numbersString.length;
   }
 
   static int toBigEndianUnsignedInt(List<int> bytes) {
