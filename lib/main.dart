@@ -58,6 +58,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _connect() async {
     try {
       _socket = await Socket.connect('192.168.0.66', 1234);
+     // _socket = await Socket.connect('172.30.1.2', 1234);
 
       /**
        *
@@ -79,123 +80,101 @@ class _ChatScreenState extends State<ChatScreen> {
             hexArray.add(data[i].toRadixString(16).padLeft(2, '0'));
           }
           List<int> dataArr = hexArray.map((hex) => int.parse(hex, radix: 16)).toList();
-          log.e('우리가받은 데이터 용량${data.length} 변환한 용량 ${dataArr.length}');
           while (dataArr.isNotEmpty) {
-            var  msgSize = Util.unsignedBytesToIntBig(dataArr [0], dataArr [1], dataArr [2], dataArr [3]);
+            HeadrTest headrTest = HeadrTest.fromBytes(0, dataArr);
+            log.e(headrTest.msgSize);
+            log.e(headrTest.msgId);
+            log.e(headrTest.RequestId);
+
+           var msgSize= Util.readIntFromBytesBigEndian(dataArr, 0);
             if(dataArr.length<msgSize){
               List subList = dataArr.sublist(0);
               log.e('지금 남아있는 data Size야${dataArr.length} 여기서 msgSize빼야돼 ${msgSize}');
               log.e('부족해 ${dataArr.length-msgSize}');
-             //  var a = dataArr.length-msgSize;
-             //  List newlist = List.filled(msgSize-subList.length, '새로운 데이터 내놔');
-             // //여따 추가
-             //  saveData.add(subList+newlist);
               dataArr.clear();
             }
             else{
-              List<int> subList = dataArr.sublist(0, msgSize);
-              log.e('우리가받은 데이터 용량${data.length} 변환한 용량 ${subList.length}');
-                var msgID  = Util.unsignedBytesToIntBig(
-                    subList[4],
-                    subList[5],
-                    subList[6],
-                    subList[7]);
-                    log.e('msg 아이디 -> $msgID');
-                    //dataArr.removeRange(0, msgSize);
-              if(msgID==1101){
-                List<int> test_1 = dataArr.sublist(Util.HeaderSize, msgSize);
-                var  test_hid  = Util.unsignedBytesToIntBig(
-                    test_1[0],
-                    test_1[1],
-                    test_1[2],
-                    test_1[3]);
-                var  test_roomcount  = Util.unsignedBytesToIntBig(
-                    test_1[4],
-                    test_1[5],
-                    test_1[6],
-                    test_1[7]);
-                log.e(' 병원이이디 ${test_hid}  룸 갯수 ${test_roomcount} ');
+              var msgID= Util.readIntFromBytesBigEndian(dataArr, 4);
+              if(msgID==1101) {
+                log.e('들어옴');
+                var RequestID= Util.readIntFromBytesBigEndian(dataArr, 8);
+                log.e(RequestID);
+                 Message1101 message = Message1101.fromBytes(12, dataArr);
+                 log.e(message.patients.length);
+                 log.e(message.toString());
 
 
+                // List<int> test_1 = dataArr.sublist(Util.HeaderSize, msgSize);
+                // var test_hid = Util.unsignedBytesToIntBig(
+                //     test_1[0],
+                //     test_1[1],
+                //     test_1[2],
+                //     test_1[3]);
+                // var test_roomcount = Util.unsignedBytesToIntBig(
+                //     test_1[4],
+                //     test_1[5],
+                //     test_1[6],
+                //     test_1[7]);
+                // log.e(test_1.length-4-4);
+                // log.e(' 병원아이디 ${test_hid}  룸 갯수 ${test_roomcount} ');
+                // List<int> test_2 = dataArr.sublist(
+                //     Util.HeaderSize + Util.hospitalIdSize + Util.RoomCount,
+                //     msgSize);
+                // int totalLength = 0;
+                //
+                // Message1101 message = Message1101.fromBytes(0, test_1);
+                // print(message.patients.length); // 3
 
-
-                var  ReID  = Util.unsignedBytesToIntBig(
-                        subList[8],
-                        subList[9],
-                        subList[10],
-                        subList[11]);
-                    var  hospitalId  = Util.unsignedBytesToIntBig(
-                        subList[12],
-                        subList[13],
-                        subList[14],
-                        subList[15]);
-                    var  roomCount  = Util.unsignedBytesToIntBig(
-                        subList[16],
-                        subList[17],
-                        subList[18],
-                        subList[19]);
-
-                    var bbyte = subList.sublist(20, subList.length);
-                    log.e('우리가받은 데이터 용량${data.length} 20byte(빼고 고정) 맞음변환한 룸카운트까지 용량 ${bbyte.length}');
-                    //----------------------------------------------------------------
-                    var  roomNumber  = Util.unsignedBytesToIntBig(
-                        bbyte[0],
-                        bbyte[1],
-                        bbyte[2],
-                        bbyte[3]);
-                    var status = bbyte[4].toInt();
-                    var  patientsNameLength  = Util.unsignedBytesToIntBig(
-                        bbyte[5],
-                        bbyte[6],
-                        bbyte[7],
-                        bbyte[8]);
-                    //여기까지 20 빠지는 거 맞음
-                    //비트랭스로 바꿔야함'
-                    log.e('우리가받은 데이터 용량${data.length} roomNumber 까지 변환한 용량 ${bbyte.length-4}');
-                    log.e('우리가받은 데이터 용량${data.length} status 까지 변환한 용량 ${bbyte.length-4-1}');
-                    log.e('우리가받은 데이터 용량${data.length} patientsNameLength 까지 변환한 용량 ${bbyte.length-4-1-4}');
-                    log.e('우리가받은 데이터 용량${data.length} ChartNumberLength 까지 변환한 용량 ${bbyte.length-4-1-4-4}');
-                    /*
-                    * 1. 환자이름의길이 4
-                    * 2. 차트넘버길이 4
-                    *
-                    * */
-                   // log.e('우리가받은 데이터 용량${data.length} 환자의 이름 빼고  변환한 용량 ${bbyte.length-c-patientsNameLength+9.bitLength} ');
-                    log.e('우리가받은 데이터 용량${data.length} 나머지 차트넘버 길이 변환한 용량 ${bbyte.length-4-1-4-4-patientsNameLength}');
-
-
-                    List<int> name = bbyte.sublist(9, patientsNameLength+9);
-                    String stName = utf8.decode(name);
-                    log.e('${stName}');
-                    int a = roomNumber.bitLength+status.bitLength+patientsNameLength.bitLength+patientsNameLength;
-                    var charr = bbyte.sublist(a,bbyte.length);
-                        var chartNumberLe  = Util.unsignedBytesToIntBig(
-                            charr[0],
-                            charr[1],
-                            charr[2],
-                            charr[3]);
-                        log.e(chartNumberLe.bitLength);
-                    //log.e(chartNumberLe);
-                    //log.e('우리가받은 데이터 용량${data.length} 차트넘버길이 빼고 변환한 용량 ${bbyte.length-c-patientsNameLength+9.bitLength-chartNumberLe.bitLength} ');
-                    var chartNumber = charr.sublist(4, chartNumberLe+4);
-                    log.e('차트번호 ${chartNumber.length}');
-                    log.e('차트번호 ${chartNumberLe+4.bitLength}');
-                    String lath = utf8.decode(chartNumber);
-                    // log.e("data : ${data.length} msgSize: $msgSize mId: $msgID ReId: $ReID hospital: $hospitalId 멀티앱이 관리하는 입원장개수: $roomCount");
-                    // log.e("입원장 번호 : $roomNumber 입원장 상태: $status 환자이름길이: $patientsNameLength");
-                    // log.e("환자이름 : $stName 차트번호길이 : $chartNumberLe 차트번호 $lath");
-                    // var cl =
-                    //     roomNumber.bitLength+
-                    //         status.bitLength+
-                    //         patientsNameLength.bitLength+
-                    //         name.length.bitLength+
-                    //         chartNumberLe.bitLength+
-                    //         chartNumber.length.bitLength;
-                    // log.e(' 클래스길이 $cl  그리고 데이터 메세지 길이 ${data.length}' );
+                // for (var i = 0; i < test_roomcount; i++) {
+                //   log.e(i);
+                //   PatientInfo patientInfo = PatientInfo.fromBytes(totalLength,test_2);
+                //   totalLength = totalLength+patientInfo.totalLength;
+                //   log.e('하나의 클래스 길이는 ?${totalLength}');
+                //   log.e(patientInfo.toString());
+                // }
+                // ByteData data = ByteData.view(Uint8List.fromList(test_2).buffer);
+                // int index = 0;
+                // int roomNumber = data.getInt32(index);
+                // index += 4;
+                // int type = data.getUint8(index++);
+                // int patientNameLength = data.getInt32(index);
+                // index += 4;
+                // String patientName = utf8.decode(test_2.sublist(index, index + patientNameLength));
+                // index += patientNameLength;
+                // int chartNumberLength = data.getInt32(index);
+                // index += 4;
+                // String chartNumber = utf8.decode(test_2.sublist(index, index + chartNumberLength));
+                // print('Room Number: $roomNumber');
+                // print('Type: $type');
+                // print('Patient Name: $patientName');
+                // print('Chart Number: $chartNumber');
+                // log.e('남은 사이즈 ${test_1.length - Util.hospitalIdSize -
+                //     Util.RoomCount}');
+                // log.e('여기서부터 클래스 시작 ${test_2.length}');
+                // print(test_2);
+                // int index = 0;
+                // int RoomNumber = Util.readIntFromBytesBigEndian(test_2, index);
+                // index += 4;
+                // int type = test_2[index++];
+                // int PatientsNameLength = Util.readIntFromBytesBigEndian(test_2, index);
+                // index += 4;
+                // log.e(index);
+                // List<int> name = test_2.sublist(index, index + PatientsNameLength);
+                // String stName = utf8.decode(name);
+                // log.e('룸넘버 ${RoomNumber} 타입 ${type} 환자이름 길이 ${PatientsNameLength}');
+                // log.e('환자이름  ${stName} 길이 ${name.length}');
+                // index += name.length;
+                // log.e('그럼나는 21부터 4개 추출할래${index}');
+                // int cname = Util.readIntFromBytesBigEndian(test_2, index);
+                // index += 4;
+                // log.e(cname);
+                // List<int> ChartNumber = test_2.sublist(index, index+ cname);
+                // String stChartNumber = utf8.decode(ChartNumber);
+                // log.e(' ${ChartNumber} 차트번호  ${stChartNumber}');
+                break;
               }
-
             }
-          }
+           }
           // if(data.length==msgSize){
           //   //메세지 길이와 데이터가 일치하면 ok
           //   //메세지 아이디에따라 거른다

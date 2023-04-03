@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ffi';
 
@@ -82,9 +83,122 @@ class Input2005 extends TranInput {
   }
 }
 
+
+class HeadrTest{
+  late int msgSize;
+  late int msgId;
+  late int RequestId;
+
+  HeadrTest.fromBytes(int length,List<int> bytes) {
+    int index = length;
+    this.msgSize = Util.readIntFromBytesBigEndian(bytes, index);
+    index += 4;
+    this.msgId = Util.readIntFromBytesBigEndian(bytes, index);
+    index += 4;
+    this.RequestId = Util.readIntFromBytesBigEndian(bytes, index);
+  }
+
+  @override
+  String toString() {
+    return 'msgSize: $msgSize\n'
+        'msgId: $msgId\n'
+        'RequestId: $RequestId\n';
+
+  }
+
+}
+
+
+class Message1101 {
+  late int HospitalId;
+  late int RoomCount;
+  late List<PatientInfo> patients;
+
+  Message1101() {
+    patients = [];
+  }
+
+  void addPatient(PatientInfo patient) {
+    patients.add(patient);
+  }
+
+  Message1101.fromBytes(int length, List<int> bytes) {
+    int index = length;
+    this.HospitalId = Util.readIntFromBytesBigEndian(bytes, index);
+    index += 4;
+    this.RoomCount = Util.readIntFromBytesBigEndian(bytes, index);
+    patients = [];
+
+    for (int i = 0; i < RoomCount; i++) {
+      index +=4;
+      PatientInfo patient = PatientInfo.fromBytes(index, bytes);
+      patients.add(patient);
+      index += patient.totalLength;
+    }
+  }
+  @override
+  String toString() {
+    // TODO: implement toString
+    return 'Room HospitalId: $HospitalId\n'
+        'RoomCount: $RoomCount\n';
+  }
+}
+
+
+
+class PatientInfo {
+ late int roomNumber;
+ late int type;
+ late String patientName;
+ late String chartNumber;
+ late int totalLength ;
+
+
+  PatientInfo.fromBytes(int length,List<int> bytes) {
+    int index = length;
+    print(index);
+    this.roomNumber = Util.readIntFromBytesBigEndian(bytes, index);
+    print(roomNumber);
+    index += 4;
+    this.type = bytes[index++];
+    int patientsNameLength = Util.readIntFromBytesBigEndian(bytes, index);
+    index += 4;
+    List<int> name = bytes.sublist(index, index + patientsNameLength);
+    this.patientName = utf8.decode(name);
+    index += name.length;
+    int chartNumberLength = Util.readIntFromBytesBigEndian(bytes, index);
+    index += 4;
+    List<int> chart = bytes.sublist(index, index + chartNumberLength);
+    this.chartNumber = utf8.decode(chart);
+    this.totalLength = 4 + 1 + 4 + patientsNameLength + 4 + chartNumberLength;
+
+
+  }
+
+  @override
+  String toString() {
+    return 'Room Number: $roomNumber\n'
+        'Type: $type\n'
+        'Patient Name: $patientName\n'
+        'totalLength: $totalLength\n'
+        'Chart Number: $chartNumber';
+  }
+
+
+
+
+}
+
+
 class Util {
 
   static int HeaderSize = 12;
+  static int hospitalIdSize = 4;
+  static int RoomCount = 4;
+  static int RoomNumSzie = 4;
+  static int RoomStatus = 1;
+  static int PatientsNameLength = 4;
+  static int ChartNumberLength = 4;
 
   static int unsignedBytesToInt(
       int b0, int b1, int b2, int b3) {
@@ -98,6 +212,13 @@ class Util {
       int b0, int b1, int b2, int b3) {
     return ((unsignedByteToInt(b0) << 24) + (unsignedByteToInt(b1) << 16) +
         (unsignedByteToInt(b2) << 8) + unsignedByteToInt(b3));
+  }
+
+ static int readIntFromBytesBigEndian(List<int> bytes, int index) {
+    return ((bytes[index++] << 24) |
+    (bytes[index++] << 16) |
+    (bytes[index++] << 8) |
+    bytes[index++]);
   }
 
   static int calculateLengthOfNumbers(List<int> numbers) {
