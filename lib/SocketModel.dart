@@ -12,31 +12,27 @@ class TestModel extends ChangeNotifier{
   int headerSize =12;
   late Socket _socket;
   Message2201? _message2201 = Message2201();
-  // Msg1101 _msg1101 = Msg1101();
-  // Msg1103 _msg1103 = Msg1103();
   bool _isConnected = false;
   int _count = 0;
-
   int get count => _count;
   Socket get socket =>_socket;
   Message2201? get message2201 => _message2201;
-  // Msg1101 get msg1101 => _msg1101;
-  // Msg1103 get msg1103 => _msg1103;
+  //Message2205? get message2205 => _message2205;
+
   bool get isConnected => _isConnected;
 
   void setData(int msgId, var bodyArr){
     switch (msgId){
       case 2201:
         _message2201 = Message2201.fromBytes(headerSize, bodyArr);
-
-      // case 1101:
-      //   _msg1101 = Msg1101.fromBytes(headerSize, bodyArr);
-      //   //Util.log.e(_msg1101.toString());
+        notifyListeners();
+      break;
+      // case 2205:
+      //   _message2205 = Message2205.fromBytes(headerSize, bodyArr);
+      //   //notifyListeners();
       //   break;
-      // case 1103:
-      //   _msg1103 = Msg1103.fromBytes(headerSize, bodyArr);
     }
-    notifyListeners();
+   //
   }
 
   void setSocket(var socket){
@@ -62,6 +58,23 @@ class TestModel extends ChangeNotifier{
 
 }
 
+class Value extends ChangeNotifier{
+  int headerSize =12;
+  Message2205? _message2205 = Message2205();
+  Message2205? get message2205 => _message2205;
+
+  void setData(int msgId, var bodyArr){
+    switch (msgId){
+      case 2205:
+        _message2205 = Message2205.fromBytes(headerSize, bodyArr);
+        Util.log.e(_message2205.toString());
+        notifyListeners();
+        break;
+    }
+    //
+  }
+
+}
 
 
 
@@ -325,8 +338,8 @@ class MultiAppData{
       addRoomInfos(roomInfo);
       RoomInfosLength +=RoomInfos![i].totalLength!;
       index+=RoomInfos![i].totalLength!;
-      Util.log.e(RoomInfos![i].toString());
-      Util.log.e('총 ${RoomInfosLength}');
+     // Util.log.e(RoomInfos![i].toString());
+     // Util.log.e('총 ${RoomInfosLength}');
     }
   }
 
@@ -486,6 +499,57 @@ class Message2204{
 
 }
 class Message2205{
+  String? MultiAppUUID;
+  int? RoomID;
+  String? DolittleMacAddress;
+  int? DataType;
+  int? Data;
+
+  Message2205(
+      {this.MultiAppUUID,
+      this.RoomID,
+      this.DolittleMacAddress,
+      this.DataType,
+      this.Data});
+
+
+  void Update(int data){
+
+
+  }
+
+  Message2205.fromBytes(int lenth, List<int> bytes){
+    int index = lenth;
+    List<int> listuuid = bytes.sublist(index, index + 36);
+    this.MultiAppUUID = utf8.decode(listuuid);
+    index+=36;
+    this.RoomID =Util.readIntFromBytesBigEndian(bytes, index);
+    index += 4;
+    List<int> Listmacaddress = bytes.sublist(index, index + 6);
+    this.DolittleMacAddress = Util.bytesToHex(
+        [Listmacaddress[0],
+          Listmacaddress[1],
+          Listmacaddress[2],
+          Listmacaddress[3],
+          Listmacaddress[4],
+          Listmacaddress[5],
+        ]);
+    index += 6;
+    this.DataType  = bytes[index++];
+    this.Data = Util.readIntFromBytesBigEndian(bytes,index);
+    index +=4;
+  }
+
+  @override
+  String toString() {
+    // TODO: implement toString
+    return "MultiAppUUID : $MultiAppUUID\n "
+            "RoomId : $RoomID\n"
+            "address : $DolittleMacAddress\n"
+            "dataType : $DataType\n"
+            "data : $Data\n";
+  }
+
 
 }
 

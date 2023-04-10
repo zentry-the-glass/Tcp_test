@@ -20,6 +20,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   Socket? _socket;
   late TestModel testModel;
+  late Value testValue;
   bool _isLoading = true;
   bool _isConnected = false;
 
@@ -27,6 +28,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     // TODO: implement initState
      testModel = Provider.of<TestModel>(context, listen:false);
+     testValue =  Provider.of<Value>(context, listen:false);
     _connect();
     super.initState();
   }
@@ -80,7 +82,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void reciveData(Uint8List data){
-    Util.log.e(data.length);
     List<int> dataList = data.toList();
     SHeader sHeader = SHeader.fromBytes(0, dataList);
     Util.log.e('msgSize ${sHeader.msgSize} msgId ${sHeader.msgId}  RequestId ${sHeader.reId}');
@@ -91,7 +92,12 @@ class _MainScreenState extends State<MainScreen> {
       }else{
          var bodyArr = dataList;
        //  Util.log.e('데이터 사용하기전 데이터 길이 bodyArr ${dataList.length}');
-         testModel.setData(sHeader.msgId, bodyArr);
+         if(sHeader.msgId==2201){
+           testModel.setData(sHeader.msgId, bodyArr);
+         }else{
+           testValue.setData(sHeader.msgId, bodyArr);
+         }
+         //testModel.setData(sHeader.msgId, bodyArr);
          dataList.removeRange(0,sHeader.msgSize);
          //Util.log.e('데이터 사용하기전 데이터 길이 bodyArr ${dataList.length}');
       }

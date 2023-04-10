@@ -8,7 +8,12 @@ import 'package:provider/provider.dart';
 import 'Header.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(
+      MultiProvider(providers: [
+        ChangeNotifierProvider(create: (_)=>TestModel()),
+        ChangeNotifierProvider(create: (_)=>Value()),
+      ],
+      child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -16,12 +21,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context)=>TestModel(),
-      child: MaterialApp(
-        title: 'Tcp',
-        home: LoginScreen(),
-      ),
+    return MaterialApp(
+      title: 'Tcp',
+      home: LoginScreen(),
     );
   }
 }
