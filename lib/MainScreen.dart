@@ -47,20 +47,24 @@ class _MainScreenState extends State<MainScreen> {
         testModel.setSocket(_socket);
         testModel.setConnected(true);
          sendMsg();
-        testModel.socket.listen((data) {
-          reciveData(data);
-        }, onError: (error) {
-          setLoading(true);
-          Util.log.e('socket connect err ${error.toString()}');
-          testModel.setConnected(false);
-          setLoading(false);
-        }, onDone: () {
-          setLoading(true);
-          Util.log.e('Server disconnected');
-          testModel.destroySocket();
-          testModel.setConnected(false);
-          setLoading(false);
-        });
+         if(testModel.socket==null){
+           return;
+         }else {
+           testModel.socket!.listen((data) {
+             reciveData(data);
+           }, onError: (error) {
+             setLoading(true);
+             Util.log.e('socket connect err ${error.toString()}');
+             testModel.setConnected(false);
+             setLoading(false);
+           }, onDone: () {
+             setLoading(true);
+             Util.log.e('Server disconnected');
+             testModel.destroySocket();
+             testModel.setConnected(false);
+             setLoading(false);
+           });
+         }
       }catch(error){
         setLoading(true);
         Util.log.e('sconnected err ${error.toString()}');
@@ -70,7 +74,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void sendMsg(){
-    final input = Message2101(msgSize:  21, msgId: 2101, reId: 1,hospitalId: 171,vetId: 55,isReceivedData: false);
+    final input = Message2101(msgSize:  21, msgId: 2101, reId: 1,hospitalId: 167,vetId: 55,isReceivedData: false);
     final bytes = input.toByteArray();
     testModel.sendMsg(bytes);
   }
@@ -92,10 +96,10 @@ class _MainScreenState extends State<MainScreen> {
       }else{
          var bodyArr = dataList;
        //  Util.log.e('데이터 사용하기전 데이터 길이 bodyArr ${dataList.length}');
-         if(sHeader.msgId==2201){
-           testModel.setData(sHeader.msgId, bodyArr);
-         }else{
+         if(sHeader.msgId==2205){
            testValue.setData(sHeader.msgId, bodyArr);
+         }else{
+           testModel.setData(sHeader.msgId, bodyArr);
          }
          //testModel.setData(sHeader.msgId, bodyArr);
          dataList.removeRange(0,sHeader.msgSize);

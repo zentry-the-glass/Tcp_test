@@ -4,19 +4,23 @@ import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_tcp_test/MultiAppDatas.dart';
 
+import 'SocketModel.dart';
+import 'SocketModel.dart';
 import 'Util.dart';
 
 
 
 class TestModel extends ChangeNotifier{
   int headerSize =12;
-  late Socket _socket;
+  Socket? _socket;
   Message2201? _message2201 = Message2201();
+  Message2204? _message2204 = Message2204();
   bool _isConnected = false;
   int _count = 0;
   int get count => _count;
-  Socket get socket =>_socket;
+  Socket? get socket =>_socket;
   Message2201? get message2201 => _message2201;
+  Message2204? get message2204 => _message2204;
   //Message2205? get message2205 => _message2205;
 
   bool get isConnected => _isConnected;
@@ -27,13 +31,66 @@ class TestModel extends ChangeNotifier{
         _message2201 = Message2201.fromBytes(headerSize, bodyArr);
         notifyListeners();
       break;
-      // case 2205:
-      //   _message2205 = Message2205.fromBytes(headerSize, bodyArr);
-      //   //notifyListeners();
-      //   break;
+       case 2204:
+        _message2204 = Message2204.fromBytes(headerSize, bodyArr);
+        notifyListeners();
+        //roomUpdate(_message2204!,_message2201!);
     }
    //
   }
+
+  void roomUpdate(Message2204 message2204,Message2201 message2201){
+    Util.log.e('roomUpdate');
+    var uuid = _message2204!.multiAppUUID;
+    var roominfo = _message2204!.roominfo;
+    Util.log.e(message2204.toString());
+    switch(message2204.actionType){
+      case 0:
+        Util.log.e('삭제');
+        Util.log.e(_message2201.toString());
+        Util.log.e(uuid);
+        Util.log.e(_message2201?.multiAppDatas?.map((e) => Util.log.e(e.multiAppUUID)));
+        _message2201!.multiAppDatas!.map((e) => e.multiAppUUID==uuid?()=>{
+           e.removeRoomInfo(roominfo!.roomId!)
+        }: e);
+        // _message2201!.multiAppDatas?.map((e){
+        //   Util.log.e(e.toString());
+        //   if(e.multiAppUUID==uuid){
+        //     Util.log.e('룸 삭제전 ${e.roomCount}');
+        //      e.removeRoomInfo(roominfo!.roomId!);
+        //     Util.log.e('룸 삭제후 ${e.roomCount}');
+        //   }else{
+        //     return;
+        //   }
+        // });
+        break;
+      case 1:
+      //추가
+        _message2201!.multiAppDatas?.map((e){
+          Util.log.e(e.toString());
+          Util.log.e(e.multiAppUUID);
+          Util.log.e(uuid);
+          if(e.multiAppUUID==uuid){
+            Util.log.e('룸 추가전 ${e.roomCount}');
+            e.addRoomInfos(roominfo!);
+            Util.log.e('룸 추가후 ${e.roomCount}');
+          }else{
+            return;
+          }
+        });
+        Util.log.e('추가');
+        break;
+
+      case 2:
+      //업데이트
+        _message2201!.updateMultiAppData(uuid!, roominfo!);
+        Util.log.e('수정');
+        break;
+
+    }
+    notifyListeners();
+  }
+
 
   void setSocket(var socket){
     _socket = socket;
@@ -46,16 +103,15 @@ class TestModel extends ChangeNotifier{
   }
 
   void destroySocket(){
-    _socket.destroy();
+    _socket!.destroy();
     notifyListeners();
   }
 
   void sendMsg(var bytes){
     Util.log.e('input2101 보낸 bytes 값 : $bytes');
-    _socket.add(bytes);
-    _socket.flush();
+    _socket!.add(bytes);
+    _socket!.flush();
   }
-
 }
 
 class Value extends ChangeNotifier{
@@ -67,7 +123,7 @@ class Value extends ChangeNotifier{
     switch (msgId){
       case 2205:
         _message2205 = Message2205.fromBytes(headerSize, bodyArr);
-        Util.log.e(_message2205.toString());
+        //Util.log.e(_message2205.toString());
         notifyListeners();
         break;
     }
@@ -193,37 +249,7 @@ class TestRoomInfo{
 
 }
 
-class Msg1103{
-  int? roomNumber;
-  String? macAddress;
-  int? type;
-  int? data;
 
-  Msg1103({this.roomNumber, this.macAddress, this.type, this.data});
-
-
-
-  Msg1103.fromBytes(int length, List<int> bytes){
-    int index = length;
-    this.roomNumber = Util.readIntFromBytesBigEndian(bytes, index);
-    index +=4;
-    this.macAddress = Util.bytesToHex([bytes[index],bytes[index+1],bytes[index+2],bytes[index+3],bytes[index+4]]);
-    index+=6;
-    this.type = bytes[index++];
-    this.data = Util.readIntFromBytesBigEndian(bytes, index);
-    //Util.log.e(toString());
-  }
-
-  @override
-  String toString() {
-    // TODO: implement toString
-    return 'Room Number: $roomNumber\n'
-        'macAddress: $macAddress\n'
-        'type: $type\n'
-        'data: $data\n';
-  }
-
-}
 
 
 //보냄
@@ -273,17 +299,37 @@ class Message2102 extends InputHeader{
 //----------------------------------------------------------------
 
 
+
+//----------------------------------------------------------------
+
 class Message2201 {
    int? connectedMultiAppCount;
    List<MultiAppData>? multiAppDatas;
 
-  Message2201(){
-    multiAppDatas = [];
-  }
+   Message2201({this.connectedMultiAppCount, this.multiAppDatas});
 
   void addMultiAppData(MultiAppData multiAppData){
     multiAppDatas!.add(multiAppData);
+    //this.connectedMultiAppCount= multiAppDatas!.length;
   }
+
+   void updateMultiAppData(String uuid, RoomInfo roomInfo) {
+    multiAppDatas!.map((e) {
+      Util.log.e(e.toString());
+       if (e.multiAppUUID == uuid) {
+          e.RoomInfos!.map((e) {
+            if(e.roomId==roomInfo.roomId){
+              Util.log.e('기존 ${e}');
+              Util.log.e('업데이트 ${roomInfo}');
+              return e = roomInfo;
+            }});
+        } else {
+          return e;
+       }
+     });
+   }
+
+
 
   Message2201.fromBytes(int length, List<int> bytes) {
     int index = length;
@@ -297,6 +343,23 @@ class Message2201 {
       index += multiAppData.RoomInfosLength;
     }
   }
+
+   factory Message2201.fromJson(Map<String, dynamic> json) {
+     return Message2201(
+       connectedMultiAppCount: json['connectedMultiAppCount'],
+       multiAppDatas: (json['multiAppDatas'] as List<dynamic>?)
+           ?.map((e) => MultiAppData.fromJson(e as Map<String, dynamic>))
+           .toList(),
+     );
+   }
+
+   Map<String, dynamic> toJson() {
+     final Map<String, dynamic> data = <String, dynamic>{};
+     data['connectedMultiAppCount'] = connectedMultiAppCount;
+     data['multiAppDatas'] =
+         multiAppDatas?.map((e) => e.toJson()).toList(growable: false);
+     return data;
+   }
 
   @override
   String toString() {
@@ -322,7 +385,31 @@ class MultiAppData{
 
   void addRoomInfos(RoomInfo roomInfo){
     this.RoomInfos!.add(roomInfo);
+   // this.roomCount =this.RoomInfos!.length;
   }
+
+   void updateRoomInfos(RoomInfo roomInfo) {
+     Util.log.e('리스트 값 변경전 ${this.RoomInfos.toString()}');
+     this.RoomInfos = RoomInfos!.map((e) {
+       if (e.roomId == roomInfo.roomId) {
+         return e = roomInfo;
+       } else {
+         return e;
+       }
+     }).toList();
+
+     Util.log.e('리스트 값 변경후 ${this.RoomInfos.toString()}');
+   }
+
+
+   void removeRoomInfo(int roomId) {
+     this.RoomInfos!.remove((room) => room.roomId == roomId);
+    // this.roomCount =this.RoomInfos!.length;
+     // removedInfo 변수에는 삭제된 RoomInfo 요소가 들어갑니다.
+   }
+
+
+
 
   MultiAppData.fromBytes(int length,List<int> bytes) {
     RoomInfosLength = 0;
@@ -343,13 +430,36 @@ class MultiAppData{
     }
   }
 
-  @override
+   MultiAppData.fromJson(Map<String, dynamic> json) {
+     this.roomCount = json['roomcount'];
+     this.multiAppUUID = json['multiAppUUID'];
+     if (json['RoomInfos'] != null) {
+       RoomInfos = <RoomInfo>[];
+       json['RoomInfos'].forEach((v) {
+         RoomInfos!.add(RoomInfo.fromJson(v));
+       });
+     }
+   }
+
+   Map<String, dynamic> toJson() {
+     final Map<String, dynamic> data = new Map<String, dynamic>();
+     data['roomcount'] = this.roomCount;
+     data['multiAppUUID'] = this.multiAppUUID;
+     if (this.RoomInfos != null) {
+       data['RoomInfos'] =
+           this.RoomInfos!.map((v) => v.toJson()).toList();
+     }
+     return data;
+   }
+@override
   String toString() {
     // TODO: implement toString
     return 'multiAppUUID: $multiAppUUID\n'
         'RoomInfoslength: ${RoomInfos?.length}\n'
         'RoomInfosLength: $RoomInfosLength\n';
   }
+
+
 }
 
 class RoomInfo {
@@ -361,8 +471,21 @@ class RoomInfo {
    String? roomName;
    String? patientName;
    String? chartNumber;
-   int? totalLength ;
+   int? totalLength;
+   int? DataType0;
+   int? DataType1;
 
+   RoomInfo({
+     this.roomId,
+     this.type,
+     this.roomNameLength,
+     this.patientsNameLength,
+     this.chartNumberLength,
+     this.roomName,
+     this.patientName,
+     this.chartNumber,
+     this.totalLength,
+   });
 
    RoomInfo.fromBytes(int length,List<int> bytes) {
     int index = length;
@@ -390,22 +513,79 @@ class RoomInfo {
     //this.totalLength = 4+4 + 1 + 4 + patientsNameLength! + 4 + chartNumberLength!;
   }
 
+   Map<String, dynamic> toJson() {
+     final Map<String, dynamic> data = new Map<String, dynamic>();
+     data['roomId'] = this.roomId;
+     data['type'] = this.type;
+     data['roomNameLength'] = this.roomNameLength;
+     data['patientsNameLength'] = this.patientsNameLength;
+     data['chartNumberLength'] = this.chartNumberLength;
+     data['roomName'] = this.roomName;
+     data['patientName'] = this.patientName;
+     data['chartNumber'] = this.chartNumber;
+     data['totalLength'] = this.totalLength;
+     return data;
+   }
+
+   factory RoomInfo.fromJson(Map<String, dynamic> json) {
+     return RoomInfo(
+       roomId: json['roomId'],
+       type: json['type'],
+       roomNameLength: json['roomNameLength'],
+       patientsNameLength: json['patientsNameLength'],
+       chartNumberLength: json['chartNumberLength'],
+       roomName: json['roomName'],
+       patientName: json['patientName'],
+       chartNumber: json['chartNumber'],
+       totalLength: json['totalLength'],
+     );
+   }
+
+   @override
+   String toString() {
+     return
+       'roomId: $roomId\n'
+           'Type: $type\n'
+           'Patient Name: $patientName\n'
+           'totalLength: $totalLength\n'
+           'Chart Number: $chartNumber';
+   }
+
+}
+
+//----------------------------------------------------------------
+
+class Message2204{
+  String? multiAppUUID;
+  int? actionType;
+  RoomInfo? roominfo;
+
+  Message2204({this.multiAppUUID, this.actionType, this.roominfo});
+
+  Message2204.fromBytes(int length, List<int> bytes){
+    int index = length;
+    List<int> listuuid = bytes.sublist(index, index + 36);
+    this.multiAppUUID = utf8.decode(listuuid);
+    index += 36;
+    this.actionType = bytes[index++];
+    this.roominfo=RoomInfo.fromBytes(index, bytes);
+
+  }
+
   @override
   String toString() {
     return
-        'roomId: $roomId\n'
-        'Type: $type\n'
-        'Patient Name: $patientName\n'
-        'totalLength: $totalLength\n'
-        'Chart Number: $chartNumber';
+      'multiAppUUID: $multiAppUUID\n'
+          'actionType: $actionType\n'
+          'roominfo: ${roominfo.toString()}';
   }
-
 
 
 
 }
 
 
+//----------------------------------------------------------------
 // class Message2202{
 //    late int MultiAppuuid;
 //    late int RoomCount;
@@ -491,13 +671,7 @@ class Message2203{
 }
 
 
-class Message2204{
- late int multiAppUUID;
- late int actionType;
 
-
-
-}
 class Message2205{
   String? MultiAppUUID;
   int? RoomID;
@@ -512,11 +686,6 @@ class Message2205{
       this.DataType,
       this.Data});
 
-
-  void Update(int data){
-
-
-  }
 
   Message2205.fromBytes(int lenth, List<int> bytes){
     int index = lenth;
@@ -550,6 +719,25 @@ class Message2205{
             "data : $Data\n";
   }
 
+  factory Message2205.fromJson(Map<String, dynamic> json) {
+    return Message2205(
+      MultiAppUUID: json['MultiAppUUID'],
+      RoomID: json['RoomID'],
+      DolittleMacAddress: json['DolittleMacAddress'],
+      DataType: json['DataType'],
+      Data: json['Data'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['MultiAppUUID'] = this.MultiAppUUID;
+    data['RoomID'] = this.RoomID;
+    data['DolittleMacAddress'] = this.DolittleMacAddress;
+    data['DataType'] = this.DataType;
+    data['Data'] = this.Data;
+    return data;
+  }
 
 }
 
