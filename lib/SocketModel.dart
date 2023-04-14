@@ -15,82 +15,147 @@ class TestModel extends ChangeNotifier{
   Socket? _socket;
   Message2201? _message2201 = Message2201();
   Message2204? _message2204 = Message2204();
+  Message2203? _message2203 = Message2203();
   bool _isConnected = false;
+  static Map monitoringList={};
   int _count = 0;
+  //Map get monitoringList =>_monitoringList;
   int get count => _count;
   Socket? get socket =>_socket;
   Message2201? get message2201 => _message2201;
   Message2204? get message2204 => _message2204;
   //Message2205? get message2205 => _message2205;
 
+
   bool get isConnected => _isConnected;
 
   void setData(int msgId, var bodyArr){
     switch (msgId){
       case 2201:
+        Util.log.e('전체입원장 정보 메세지 받아오기!!!');
         _message2201 = Message2201.fromBytes(headerSize, bodyArr);
+        Util.log.e(_message2201?.toJson().toString());
+        //_monitoringList = message2201!.toJson();
+        //monitoringList = _message2201!.toJson();
         notifyListeners();
       break;
        case 2204:
         _message2204 = Message2204.fromBytes(headerSize, bodyArr);
+        //notifyListeners();
+        roomUpdate(_message2204!);
+        //그냥 여기서 json 을 만들어서 아예넘겨버리면 간섭안해도 되고 편할듯
+      break;
+      case 2202:
+        //테블릿하나더킴 == 앱하나 더킴
+        var a = MultiAppData.fromBytes(headerSize, bodyArr);
+        //Util.log.e(a.toJson());
+        _message2201!.addMultiAppData(a);
+        _message2201?.connectedMultiAppCount= _message2201?.multiAppDatas?.length;
+        //Util.log.e(_message2201!.toJson());
+        // for (var multiAppData in _message2201!.toJson()['multiAppDatas']) {
+        //   monitoringList['${multiAppData['multiAppUUID']}'] = {};
+        //   for (var roomInfo in multiAppData['RoomInfos']) {
+        //     monitoringList['${multiAppData['multiAppUUID']}']['room_id${roomInfo['roomId']}'] = {
+        //       "Datatype0":"",
+        //       "Datatype1":"",
+        //     };
+        //
+        //   }
+        // }
         notifyListeners();
-        //roomUpdate(_message2204!,_message2201!);
+        break;
+
+      case 2203:
+
+        _message2203 = Message2203.fromBytes(headerSize, bodyArr);
+        for (var i = _message2201!.multiAppDatas!.length-1; i>=0; i--){
+          if(_message2201!.multiAppDatas![i].multiAppUUID=='998b559f-b3e7-4e8d-9ff9-072c58599415'){
+            _message2201!.multiAppDatas!.removeAt(i); // removeAt() 대신 remove() 메서드 사용
+            _message2201?.connectedMultiAppCount=_message2201?.multiAppDatas?.length;
+          }
+        }
+        notifyListeners();
+
+      break;
+      case 2207:
+
+        break;
+
+      case 2206:
+
+
+        break;
+
+
     }
    //
   }
 
-  void roomUpdate(Message2204 message2204,Message2201 message2201){
+
+
+  void roomUpdate(Message2204 message2204){
     Util.log.e('roomUpdate');
-    var uuid = _message2204!.multiAppUUID;
-    var roominfo = _message2204!.roominfo;
+    Util.log.e(_message2201.toString());
     Util.log.e(message2204.toString());
+    var uuid =  message2204.multiAppUUID;
+    var roomInfoData = message2204.roominfo;
+    //notifyListeners();
+    //notifyListeners 띄우면 다시 처음 부터 구축이 되어진다.
     switch(message2204.actionType){
       case 0:
         Util.log.e('삭제');
-        Util.log.e(_message2201.toString());
-        Util.log.e(uuid);
-        Util.log.e(_message2201?.multiAppDatas?.map((e) => Util.log.e(e.multiAppUUID)));
-        _message2201!.multiAppDatas!.map((e) => e.multiAppUUID==uuid?()=>{
-           e.removeRoomInfo(roominfo!.roomId!)
-        }: e);
-        // _message2201!.multiAppDatas?.map((e){
-        //   Util.log.e(e.toString());
-        //   if(e.multiAppUUID==uuid){
-        //     Util.log.e('룸 삭제전 ${e.roomCount}');
-        //      e.removeRoomInfo(roominfo!.roomId!);
-        //     Util.log.e('룸 삭제후 ${e.roomCount}');
-        //   }else{
-        //     return;
-        //   }
-        // });
+        message2201?.multiAppDatas!
+            .where((element) => element.multiAppUUID == uuid)
+            .forEach((element) {
+          final updatedRoomInfos = element.RoomInfos?.where((roomInfo) => roomInfo.roomId != roomInfoData?.roomId).toList();
+          Util.log.e(updatedRoomInfos?.length.toString());
+          final updatedRoomCount = updatedRoomInfos?.length ?? 0;
+          element.RoomInfos = updatedRoomInfos;
+          element.roomCount = updatedRoomCount;
+        });
+
+        Util.log.e('삭제');
+        notifyListeners();
         break;
       case 1:
-      //추가
-        _message2201!.multiAppDatas?.map((e){
-          Util.log.e(e.toString());
-          Util.log.e(e.multiAppUUID);
-          Util.log.e(uuid);
-          if(e.multiAppUUID==uuid){
-            Util.log.e('룸 추가전 ${e.roomCount}');
-            e.addRoomInfos(roominfo!);
-            Util.log.e('룸 추가후 ${e.roomCount}');
-          }else{
-            return;
-          }
+        Util.log.e('추가 될때는 이미 있는 json에 추가 시키는게 나을거같음 전에 ');
+        message2201?.multiAppDatas!
+            .where((element) => element.multiAppUUID == uuid)
+            .forEach((element) {
+          element.RoomInfos?.add(roomInfoData!);
+          element.roomCount=element.RoomInfos?.length;
         });
-        Util.log.e('추가');
+        message2201?.connectedMultiAppCount=message2201?.multiAppDatas?.length;
+        notifyListeners();
+
         break;
 
       case 2:
       //업데이트
-        _message2201!.updateMultiAppData(uuid!, roominfo!);
         Util.log.e('수정');
+      _message2201?.multiAppDatas!
+          .where((element) => element.multiAppUUID == uuid)
+          .forEach((element) {
+            final roomInfos = element.RoomInfos;
+             if(roomInfos !=null){
+               for(int i=0; i<roomInfos.length; i++){
+                 final roomInfo = roomInfos[i];
+                 if(roomInfo.roomId==roomInfoData?.roomId){
+                   roomInfos[i] = roomInfoData!;
+                   break;
+                 }
+               }
+             }
+         });
+        message2201?.connectedMultiAppCount=message2201?.multiAppDatas?.length;
+        notifyListeners();
         break;
 
     }
-    notifyListeners();
+   // notifyListeners();
   }
 
+  void s2201update(){}
 
   void setSocket(var socket){
     _socket = socket;
@@ -114,20 +179,22 @@ class TestModel extends ChangeNotifier{
   }
 }
 
+
+
 class Value extends ChangeNotifier{
   int headerSize =12;
   Message2205? _message2205 = Message2205();
   Message2205? get message2205 => _message2205;
 
+
   void setData(int msgId, var bodyArr){
     switch (msgId){
       case 2205:
         _message2205 = Message2205.fromBytes(headerSize, bodyArr);
-        //Util.log.e(_message2205.toString());
+        Util.log.e(_message2205!.toJson());
         notifyListeners();
         break;
     }
-    //
   }
 
 }
@@ -302,47 +369,58 @@ class Message2102 extends InputHeader{
 
 //----------------------------------------------------------------
 
+class room{
+  static List<MultiAppData> multiAppDatas=[] ;
+
+  static void a(MultiAppData multiAppData){
+    multiAppDatas.add(multiAppData);
+    Util.log.e(multiAppData.toString());
+  }
+}
+
 class Message2201 {
    int? connectedMultiAppCount;
-   List<MultiAppData>? multiAppDatas;
+   List<MultiAppData>? multiAppDatas =[] ;
 
-   Message2201({this.connectedMultiAppCount, this.multiAppDatas});
+   Message2201({this.connectedMultiAppCount,  this.multiAppDatas});
 
   void addMultiAppData(MultiAppData multiAppData){
-    multiAppDatas!.add(multiAppData);
-    //this.connectedMultiAppCount= multiAppDatas!.length;
+    multiAppDatas?.add(multiAppData);
   }
 
-   void updateMultiAppData(String uuid, RoomInfo roomInfo) {
-    multiAppDatas!.map((e) {
-      Util.log.e(e.toString());
-       if (e.multiAppUUID == uuid) {
-          e.RoomInfos!.map((e) {
-            if(e.roomId==roomInfo.roomId){
-              Util.log.e('기존 ${e}');
-              Util.log.e('업데이트 ${roomInfo}');
-              return e = roomInfo;
-            }});
-        } else {
-          return e;
-       }
-     });
+   void updateMultiAppData(Message2204 message2204) {
+    Util.log.e(message2204.toString());
+
+
+    // multiAppDatas!.map((e) {
+    //   Util.log.e(e.toString());
+    //    if (e.multiAppUUID == uuid) {
+    //       e.RoomInfos!.map((e) {
+    //         if(e.roomId==roomInfo.roomId){
+    //           Util.log.e('기존 ${e}');
+    //           Util.log.e('업데이트 ${roomInfo}');
+    //           return e = roomInfo;
+    //         }});
+    //     } else {
+    //       return e;
+    //    }
+    //  });
    }
 
 
-
   Message2201.fromBytes(int length, List<int> bytes) {
+    //헤더를자르자
     int index = length;
     this.connectedMultiAppCount = Util.readIntFromBytesBigEndian(bytes, index);
     index += 4;
-    multiAppDatas =[];
-    MultiAppData multiAppData;
     for (int i = 0; i < connectedMultiAppCount!; i++) {
-      multiAppData = MultiAppData.fromBytes(index, bytes);
-      addMultiAppData(multiAppData);
-      index += multiAppData.RoomInfosLength;
+       MultiAppData multiAppData = MultiAppData.fromBytes(index, bytes);
+       addMultiAppData(multiAppData);
+       index = multiAppData.RoomInfosLength!;
     }
   }
+
+
 
    factory Message2201.fromJson(Map<String, dynamic> json) {
      return Message2201(
@@ -366,7 +444,7 @@ class Message2201 {
     // TODO: implement toString
     return '연결되어있는 모니터링앱 갯수: $connectedMultiAppCount\n'
         '모니터링앱이 관리하는 데이터: ${multiAppDatas!.length}\n'
-        '방갯수 : ${multiAppDatas![0].roomCount}\n'
+
 
     ;
   }
@@ -377,7 +455,7 @@ class MultiAppData{
    String? multiAppUUID;
    int? roomCount;
    List<RoomInfo>? RoomInfos;
-   late int RoomInfosLength ;
+   int? RoomInfosLength ;
 
   MultiAppData(){
     RoomInfos = [];
@@ -412,22 +490,25 @@ class MultiAppData{
 
 
   MultiAppData.fromBytes(int length,List<int> bytes) {
-    RoomInfosLength = 0;
+    //RoomInfosLength = 0;
     int index = length;
     List<int> listuuid = bytes.sublist(index, index + 36);
     this.multiAppUUID = utf8.decode(listuuid);
     index += 36;
     this.roomCount = Util.readIntFromBytesBigEndian(bytes, index);
     index +=4;
+    //56
     RoomInfos = [];
     for (int i = 0; i < roomCount!; i++) {
       RoomInfo roomInfo = RoomInfo.fromBytes(index, bytes);
       addRoomInfos(roomInfo);
-      RoomInfosLength +=RoomInfos![i].totalLength!;
       index+=RoomInfos![i].totalLength!;
+
+      this.RoomInfosLength = index;
      // Util.log.e(RoomInfos![i].toString());
-     // Util.log.e('총 ${RoomInfosLength}');
+       //Util.log.e('총 ${RoomInfosLength}');
     }
+    //Util.log.e(toString());
   }
 
    MultiAppData.fromJson(Map<String, dynamic> json) {
@@ -472,8 +553,9 @@ class RoomInfo {
    String? patientName;
    String? chartNumber;
    int? totalLength;
-   int? DataType0;
-   int? DataType1;
+   int dataType0=0;
+   int dataType1=0;
+
 
    RoomInfo({
      this.roomId,
@@ -494,6 +576,8 @@ class RoomInfo {
     this.type = bytes[index++];
     this.roomNameLength =Util.readIntFromBytesBigEndian(bytes, index);
     index += 4;
+    //Util.log.e(bytes.length);
+    //Util.log.e('index ${index}  몇부터 몇까지? ${index+roomNameLength!}');
     List<int> listRoomName = bytes.sublist(index, index + roomNameLength!);
     this.roomName = utf8.decode(listRoomName);
     index += listRoomName.length;
@@ -511,6 +595,7 @@ class RoomInfo {
     //Util.log.e('하나의 클래스길이는 몇입니까? : $totalLength');
    // Util.log.e('현재 인덱스길이는 몇입니까? ${index.toString()}');
     //this.totalLength = 4+4 + 1 + 4 + patientsNameLength! + 4 + chartNumberLength!;
+     //Util.log.e(toString());
   }
 
    Map<String, dynamic> toJson() {
@@ -524,6 +609,9 @@ class RoomInfo {
      data['patientName'] = this.patientName;
      data['chartNumber'] = this.chartNumber;
      data['totalLength'] = this.totalLength;
+     data['dataType0']=this.dataType0;
+     data['dataType1']=this.dataType1;
+
      return data;
    }
 
@@ -538,6 +626,7 @@ class RoomInfo {
        patientName: json['patientName'],
        chartNumber: json['chartNumber'],
        totalLength: json['totalLength'],
+
      );
    }
 
@@ -661,11 +750,15 @@ class Message2204{
 // }
 
 class Message2203{
-  late int multiAppUUID;
+   String? multiAppUUID;
+
+
+   Message2203({this.multiAppUUID});
 
   Message2203.fromBytes(int lenth, List<int> bytes){
     int index = lenth;
-    this.multiAppUUID = Util.readIntFromBytesBigEndian(bytes, index);
+    List<int> listuuid = bytes.sublist(index, index + 36);
+    this.multiAppUUID = utf8.decode(listuuid);
   }
 
 }
@@ -707,6 +800,7 @@ class Message2205{
     this.DataType  = bytes[index++];
     this.Data = Util.readIntFromBytesBigEndian(bytes,index);
     index +=4;
+
   }
 
   @override
@@ -742,6 +836,50 @@ class Message2205{
 }
 
 class Message2206{
+  String? MultiAppUUID;
+  int? RoomID;
+  int? AlarmType;
+
+  Message2206({this.MultiAppUUID, this.RoomID, this.AlarmType});
+
+
+
+  Message2206.fromBytes(int lenth, List<int> bytes){
+    int index = lenth;
+    List<int> listuuid = bytes.sublist(index, index + 36);
+    this.MultiAppUUID = utf8.decode(listuuid);
+    index+=36;
+    this.RoomID =Util.readIntFromBytesBigEndian(bytes, index);
+    index += 4;
+    this.AlarmType  = bytes[index++];
+
+
+  }
+
+  @override
+  String toString() {
+    // TODO: implement toString
+    return "MultiAppUUID : $MultiAppUUID\n "
+        "RoomId : $RoomID\n"
+        "AlarmType : $AlarmType\n";
+  }
+
+  factory Message2206.fromJson(Map<String, dynamic> json) {
+    return Message2206(
+      MultiAppUUID: json['MultiAppUUID'],
+      RoomID: json['RoomID'],
+      AlarmType: json['AlarmType'],
+
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['MultiAppUUID'] = this.MultiAppUUID;
+    data['RoomID'] = this.RoomID;
+    data['AlarmType'] = this.AlarmType;
+    return data;
+  }
 
 }
 
