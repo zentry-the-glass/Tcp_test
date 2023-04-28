@@ -13,6 +13,7 @@ dependencies:
   provider: ^6.0.0
   vibration: ^1.7.5
   audioplayers: ^4.0.1
+  flutter_svg: ^0.22.0
 
 dev_dependencies:
   flutter_test:
@@ -20,4 +21,7 @@ dev_dependencies:
   flutter_lints: ^2.0.0
 
 flutter:
+  assets:
+    - assets/
   uses-material-design: true
+

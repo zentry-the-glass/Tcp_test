@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_tcp_test/MultiAppDatas.dart';
+import 'package:vibration/vibration.dart';
 
 import 'SocketModel.dart';
 import 'SocketModel.dart';
@@ -16,6 +18,8 @@ class TestModel extends ChangeNotifier{
   Message2201? _message2201 = Message2201();
   Message2204? _message2204 = Message2204();
   Message2203? _message2203 = Message2203();
+  Message2205? _message2205 = Message2205();
+  Message2205? get message2205 => _message2205;
   bool _isConnected = false;
   static Map monitoringList={};
   int _count = 0;
@@ -34,12 +38,13 @@ class TestModel extends ChangeNotifier{
       case 2201:
         Util.log.e('전체입원장 정보 메세지 받아오기!!!');
         _message2201 = Message2201.fromBytes(headerSize, bodyArr);
-        Util.log.e(_message2201?.toJson().toString());
-        //_monitoringList = message2201!.toJson();
+         Util.log.e(_message2201?.toJson().toString());
+       // _monitoringList = message2201!.toJson();
         //monitoringList = _message2201!.toJson();
         notifyListeners();
       break;
        case 2204:
+         //방정보변경
         _message2204 = Message2204.fromBytes(headerSize, bodyArr);
         //notifyListeners();
         roomUpdate(_message2204!);
@@ -51,25 +56,15 @@ class TestModel extends ChangeNotifier{
         //Util.log.e(a.toJson());
         _message2201!.addMultiAppData(a);
         _message2201?.connectedMultiAppCount= _message2201?.multiAppDatas?.length;
-        //Util.log.e(_message2201!.toJson());
-        // for (var multiAppData in _message2201!.toJson()['multiAppDatas']) {
-        //   monitoringList['${multiAppData['multiAppUUID']}'] = {};
-        //   for (var roomInfo in multiAppData['RoomInfos']) {
-        //     monitoringList['${multiAppData['multiAppUUID']}']['room_id${roomInfo['roomId']}'] = {
-        //       "Datatype0":"",
-        //       "Datatype1":"",
-        //     };
-        //
-        //   }
-        // }
         notifyListeners();
         break;
 
       case 2203:
-
-        _message2203 = Message2203.fromBytes(headerSize, bodyArr);
+        //멀티모니터링앱 끊김
+      Util.log.e('멀티 끊김');
+         _message2203 = Message2203.fromBytes(headerSize, bodyArr);
         for (var i = _message2201!.multiAppDatas!.length-1; i>=0; i--){
-          if(_message2201!.multiAppDatas![i].multiAppUUID=='998b559f-b3e7-4e8d-9ff9-072c58599415'){
+          if(_message2201!.multiAppDatas![i].multiAppUUID==_message2203!.multiAppUUID){
             _message2201!.multiAppDatas!.removeAt(i); // removeAt() 대신 remove() 메서드 사용
             _message2201?.connectedMultiAppCount=_message2201?.multiAppDatas?.length;
           }
@@ -86,6 +81,12 @@ class TestModel extends ChangeNotifier{
 
         break;
 
+      // case 2205:
+      //   _message2205 = Message2205.fromBytes(headerSize, bodyArr);
+      //   Util.log.e(_message2205!.toJson());
+      //   notifyListeners();
+      //
+      //   break;
 
     }
    //
@@ -118,7 +119,6 @@ class TestModel extends ChangeNotifier{
         notifyListeners();
         break;
       case 1:
-        Util.log.e('추가 될때는 이미 있는 json에 추가 시키는게 나을거같음 전에 ');
         message2201?.multiAppDatas!
             .where((element) => element.multiAppUUID == uuid)
             .forEach((element) {
@@ -131,8 +131,7 @@ class TestModel extends ChangeNotifier{
         break;
 
       case 2:
-      //업데이트
-        Util.log.e('수정');
+      //업데이
       _message2201?.multiAppDatas!
           .where((element) => element.multiAppUUID == uuid)
           .forEach((element) {
@@ -183,7 +182,13 @@ class TestModel extends ChangeNotifier{
 
 class Value extends ChangeNotifier{
   int headerSize =12;
+  //bool isbell = false;
+ // final _controller = StreamController<Message2205>();
+  //Stream<Message2205> get stream =>_controller.stream;
   Message2205? _message2205 = Message2205();
+  Message2206? _message2206 = Message2206();
+
+  Message2206? get message2206 =>_message2206;
   Message2205? get message2205 => _message2205;
 
 
@@ -191,13 +196,56 @@ class Value extends ChangeNotifier{
     switch (msgId){
       case 2205:
         _message2205 = Message2205.fromBytes(headerSize, bodyArr);
-        Util.log.e(_message2205!.toJson());
+         notifyListeners();
+        break;
+      case 2206:
+        _message2206 = Message2206.fromBytes(headerSize, bodyArr);
+        notifyListeners();
+        bell(true);
+        break;
+      case 2207:
+        _message2206 = Message2206.fromBytes(headerSize, bodyArr);
+        bell(false);
         notifyListeners();
         break;
     }
   }
 
+  void bell(bool isbell){
+    while(isbell){
+      Vibration.vibrate(duration: 1000);
+    }
+
+  }
+
 }
+
+
+// class Streemvalue {
+//   int headerSize =12;
+//   StreamController<Message2205> _controller = StreamController<Message2205>();
+//   Stream<Message2205> get stream =>_controller.stream;
+//
+//
+//
+//
+//
+//   void setData(int msgId, var bodyArr){
+//     switch (msgId){
+//       case 2205:
+//          _controller.add(Message2205.fromBytes(headerSize, bodyArr));
+//         //_message2205 = Message2205.fromBytes(headerSize, bodyArr);
+//
+//         break;
+//       case 2206:
+//         break;
+//
+//     }
+//
+//   }
+//
+// }
+
 
 
 
